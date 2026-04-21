@@ -1,71 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isra_fields_booking/data/datasources/auth_remote_datasource.dart';
+import 'package:isra_fields_booking/data/repositories/auth_repository_impl.dart';
+import 'package:isra_fields_booking/domain/entities/student.dart';
+import 'package:isra_fields_booking/domain/repositories/auth_repository.dart';
+import 'package:isra_fields_booking/domain/usecases/login_usecase.dart';
+import 'package:isra_fields_booking/domain/usecases/logout_usecase.dart';
+import 'package:isra_fields_booking/core/utils/result.dart';
+import 'package:isra_fields_booking/presentation/providers/auth_state.dart';
 
-import '../../data/datasources/auth_remote_datasource.dart';
-import '../../data/repositories/auth_repository_impl.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../../domain/usecases/login_usecase.dart';
-import '../../domain/usecases/logout_usecase.dart';
-import '../../domain/entities/student.dart';
-import 'auth_state.dart';
+// ── Dependency Providers ──────────────────────────────────────────────────────
 
-// ════════════════════════════════════════════════════════════════════════════
-// DEPENDENCY PROVIDERS
-// These provide instances through the dependency chain.
-// To switch from mock → real API, only change authRemoteDataSourceProvider.
-// ════════════════════════════════════════════════════════════════════════════
-
-/// Provides the data source. Swap MockAuthRemoteDataSource for your real
-/// HTTP data source here when the backend is ready.
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return MockAuthRemoteDataSource();
-  // FUTURE: return RealAuthRemoteDataSource(dioClient: ref.watch(dioProvider));
 });
 
-/// Provides the repository implementation.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(ref.watch(authRemoteDataSourceProvider));
 });
 
-/// Provides the login use case.
 final loginUseCaseProvider = Provider<LoginUseCase>((ref) {
   return LoginUseCase(ref.watch(authRepositoryProvider));
 });
 
-/// Provides the logout use case.
 final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(authRepositoryProvider));
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-// AUTH NOTIFIER & PROVIDER
-// ════════════════════════════════════════════════════════════════════════════
+// ── Main Auth Provider ────────────────────────────────────────────────────────
 
-/// The main auth provider. UI widgets watch this to react to auth state changes.
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
     loginUseCase: ref.watch(loginUseCaseProvider),
     logoutUseCase: ref.watch(logoutUseCaseProvider),
   );
 });
 
-/// A convenience provider for quick access to the authenticated student.
-/// Returns null when the user is not authenticated.
+// ── Convenience Providers ─────────────────────────────────────────────────────
+
 final currentStudentProvider = Provider<Student?>((ref) {
-  final authState = ref.watch(authProvider);
-  return switch (authState) {
-    AuthAuthenticated(:final student) => student,
-    _ => null,
-  };
+  final state = ref.watch(authProvider);
+  if (state is AuthAuthenticated) return state.student;
+  return null;
 });
 
-/// True when the user is currently authenticated.
 final isAuthenticatedProvider = Provider<bool>((ref) {
   return ref.watch(authProvider) is AuthAuthenticated;
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-// AUTH NOTIFIER
-// ════════════════════════════════════════════════════════════════════════════
+// ── Auth Notifier ─────────────────────────────────────────────────────────────
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final LoginUseCase _loginUseCase;
@@ -78,11 +61,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _logoutUseCase = logoutUseCase,
         super(const AuthInitial());
 
-  // ── Login ──────────────────────────────────────────────────────────────────
-
-  /// Attempts to authenticate the student with the given [studentId].
   Future<void> login(String studentId) async {
-    // Guard: prevent double submissions
     if (state is AuthLoading) return;
 
     state = const AuthLoading();
@@ -95,27 +74,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
-
-  /// Signs out the current student and clears the session.
   Future<void> logout() async {
     state = const AuthLoading();
-
-    final result = await _logoutUseCase();
-
-    result.when(
-      onSuccess: (_) => state = const AuthUnauthenticated(),
-      onFailure: (failure) {
-        // Even on logout failure, clear local state for security
-        state = const AuthUnauthenticated();
-      },
-    );
+    await _logoutUseCase();
+    state = const AuthUnauthenticated();
   }
 
-  // ── Clear Error ────────────────────────────────────────────────────────────
-
-  /// Resets the auth state back to [AuthInitial].
-  /// Call this when the user starts typing again after an error.
   void clearError() {
     if (state is AuthError) {
       state = const AuthInitial();

@@ -1,22 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:isra_fields_booking/core/constants/app_constants.dart';
+import 'package:isra_fields_booking/core/theme/app_colors.dart';
+import 'package:isra_fields_booking/core/theme/app_text_styles.dart';
+import 'package:isra_fields_booking/core/utils/validators.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../../core/utils/validators.dart';
-
-/// ---------------------------------------------------------------------------
-/// Reusable Student ID input widget.
-///
-/// Features:
-///  - Numeric-only keyboard
-///  - 10-digit hard character limit
-///  - Live digit counter (e.g., 7 / 10)
-///  - Inline validation feedback
-///  - Animated border on focus
-///  - Optional clear button
-/// ---------------------------------------------------------------------------
 class StudentIdTextField extends StatefulWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
@@ -41,8 +29,6 @@ class StudentIdTextField extends StatefulWidget {
 
 class _StudentIdTextFieldState extends State<StudentIdTextField>
     with SingleTickerProviderStateMixin {
-  late AnimationController _borderAnimController;
-  late Animation<double> _borderAnim;
   late FocusNode _focusNode;
   bool _isFocused = false;
   String? _errorText;
@@ -52,32 +38,18 @@ class _StudentIdTextFieldState extends State<StudentIdTextField>
     super.initState();
     _focusNode = widget.focusNode ?? FocusNode();
     _focusNode.addListener(_onFocusChange);
-
-    _borderAnimController = AnimationController(
-      vsync: this,
-      duration: AppConstants.animationFast,
-    );
-    _borderAnim = Tween<double>(begin: 1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _borderAnimController, curve: Curves.easeOut),
-    );
   }
 
   void _onFocusChange() {
     setState(() => _isFocused = _focusNode.hasFocus);
-    if (_focusNode.hasFocus) {
-      _borderAnimController.forward();
-    } else {
-      _borderAnimController.reverse();
-    }
   }
 
   void _handleChanged(String value) {
-    // Clear error as user types
     if (_errorText != null) {
       setState(() => _errorText = null);
     }
     widget.onChanged?.call(value);
-    setState(() {}); // Refresh counter
+    setState(() {});
   }
 
   void _validate() {
@@ -90,7 +62,6 @@ class _StudentIdTextFieldState extends State<StudentIdTextField>
   @override
   void dispose() {
     if (widget.focusNode == null) _focusNode.dispose();
-    _borderAnimController.dispose();
     super.dispose();
   }
 
@@ -102,15 +73,15 @@ class _StudentIdTextFieldState extends State<StudentIdTextField>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Label ────────────────────────────────────────────────────────────
+        // ── Label Row ─────────────────────────────────────────────────────
         Row(
           children: [
             const Icon(
               Icons.badge_outlined,
-              size: AppConstants.iconSizeS,
+              size: 18.0,
               color: AppColors.textSecondary,
             ),
-            const SizedBox(width: AppConstants.paddingXS),
+            const SizedBox(width: 4),
             Text(
               'Student ID',
               style: AppTextStyles.labelLarge.copyWith(
@@ -122,116 +93,119 @@ class _StudentIdTextFieldState extends State<StudentIdTextField>
               ),
             ),
             const Spacer(),
-            // ── Digit Counter ──────────────────────────────────────────────
-            AnimatedSwitcher(
-              duration: AppConstants.animationFast,
-              child: Text(
-                '$currentLength / ${AppConstants.studentIdLength}',
-                key: ValueKey(currentLength),
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: isComplete
-                      ? AppColors.success
-                      : _errorText != null
-                          ? AppColors.error
-                          : AppColors.textHint,
-                  fontWeight: isComplete ? FontWeight.w600 : FontWeight.w400,
-                ),
+            // ── Digit counter ──────────────────────────────────────────────
+            Text(
+              '$currentLength / ${AppConstants.studentIdLength}',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: isComplete
+                    ? AppColors.success
+                    : _errorText != null
+                        ? AppColors.error
+                        : AppColors.textHint,
+                fontWeight: isComplete ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ],
         ),
-        const SizedBox(height: AppConstants.paddingS),
+        const SizedBox(height: 8),
 
         // ── Input Field ───────────────────────────────────────────────────
-        AnimatedBuilder(
-          animation: _borderAnim,
-          builder: (context, child) {
-            return TextFormField(
-              controller: widget.controller,
-              focusNode: _focusNode,
-              enabled: widget.enabled,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              style: AppTextStyles.input.copyWith(
-                letterSpacing: 3.0, // Spacious digits for readability
-                fontWeight: FontWeight.w600,
+        TextFormField(
+          controller: widget.controller,
+          focusNode: _focusNode,
+          enabled: widget.enabled,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          style: AppTextStyles.input.copyWith(
+            letterSpacing: 3.0,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLength: AppConstants.studentIdLength,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(AppConstants.studentIdLength),
+          ],
+          decoration: InputDecoration(
+            hintText: '_ _ _ _ _ _ _ _ _ _',
+            hintStyle: AppTextStyles.inputHint.copyWith(letterSpacing: 3.0),
+            counterText: '',
+            prefixIcon: const Icon(
+              Icons.dialpad_rounded,
+              color: AppColors.primary,
+              size: 24.0,
+            ),
+            suffixIcon: widget.controller.text.isNotEmpty
+                ? isComplete
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.success,
+                      )
+                    : IconButton(
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          color: AppColors.textHint,
+                        ),
+                        onPressed: () {
+                          widget.controller.clear();
+                          setState(() => _errorText = null);
+                          widget.onChanged?.call('');
+                        },
+                      )
+                : null,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide(
+                color: _errorText != null
+                    ? AppColors.inputErrorBorder
+                    : isComplete
+                        ? AppColors.success
+                        : AppColors.inputBorder,
               ),
-              maxLength: AppConstants.studentIdLength,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(AppConstants.studentIdLength),
-              ],
-              decoration: InputDecoration(
-                hintText: '_ _ _ _ _ _ _ _ _ _',
-                hintStyle: AppTextStyles.inputHint.copyWith(
-                  letterSpacing: 3.0,
-                ),
-                counterText: '', // Hide the default counter (we have a custom one)
-                prefixIcon: const Icon(
-                  Icons.dialpad_rounded,
-                  color: AppColors.primary,
-                  size: AppConstants.iconSizeM,
-                ),
-                suffixIcon: widget.controller.text.isNotEmpty
-                    ? _buildSuffixIcon(isComplete)
-                    : null,
-                // Override border color based on state
-                enabledBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusM),
-                  borderSide: BorderSide(
-                    color: _errorText != null
-                        ? AppColors.inputErrorBorder
-                        : isComplete
-                            ? AppColors.success
-                            : AppColors.inputBorder,
-                    width: _borderAnim.value,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusM),
-                  borderSide: BorderSide(
-                    color: _errorText != null
-                        ? AppColors.inputErrorBorder
-                        : AppColors.inputFocusedBorder,
-                    width: 2,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusM),
-                  borderSide: const BorderSide(
-                    color: AppColors.inputErrorBorder,
-                    width: 1.5,
-                  ),
-                ),
-                filled: true,
-                fillColor: widget.enabled
-                    ? AppColors.inputFill
-                    : AppColors.surfaceVariant,
-                errorText: null, // We render error manually below
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide(
+                color: _errorText != null
+                    ? AppColors.inputErrorBorder
+                    : AppColors.inputFocusedBorder,
+                width: 2,
               ),
-              onChanged: _handleChanged,
-              onFieldSubmitted: (_) {
-                _validate();
-                widget.onFieldSubmitted?.call();
-              },
-              validator: (_) => _errorText, // Bridge to Form validation
-            );
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: const BorderSide(
+                color: AppColors.inputErrorBorder,
+                width: 1.5,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: const BorderSide(
+                color: AppColors.inputErrorBorder,
+                width: 2,
+              ),
+            ),
+            filled: true,
+            fillColor: widget.enabled
+                ? AppColors.inputFill
+                : AppColors.surfaceVariant,
+            errorText: null,
+          ),
+          onChanged: _handleChanged,
+          onFieldSubmitted: (_) {
+            _validate();
+            widget.onFieldSubmitted?.call();
           },
+          validator: (_) => _errorText,
         ),
 
         // ── Error Message ─────────────────────────────────────────────────
         AnimatedSwitcher(
-          duration: AppConstants.animationFast,
+          duration: const Duration(milliseconds: 200),
           child: _errorText != null
               ? Padding(
                   key: const ValueKey('error'),
-                  padding: const EdgeInsets.only(
-                    top: AppConstants.paddingXS,
-                    left: AppConstants.paddingXS,
-                  ),
+                  padding: const EdgeInsets.only(top: 4, left: 4),
                   child: Row(
                     children: [
                       const Icon(Icons.info_outline,
@@ -252,23 +226,5 @@ class _StudentIdTextFieldState extends State<StudentIdTextField>
     );
   }
 
-  Widget _buildSuffixIcon(bool isComplete) {
-    if (isComplete) {
-      return const Icon(
-        Icons.check_circle_rounded,
-        color: AppColors.success,
-      );
-    }
-    return IconButton(
-      icon: const Icon(Icons.clear_rounded, color: AppColors.textHint),
-      onPressed: () {
-        widget.controller.clear();
-        setState(() => _errorText = null);
-        widget.onChanged?.call('');
-      },
-    );
-  }
-
-  /// Expose external validation trigger (e.g., from login button press).
   void validate() => _validate();
 }

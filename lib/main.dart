@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'core/theme/app_theme.dart';
-import 'routing/app_router.dart';
+import 'package:isra_fields_booking/core/theme/app_theme.dart';
+import 'package:isra_fields_booking/routing/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock orientation to portrait
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -23,7 +20,6 @@ void main() async {
   );
 
   runApp(
-    // ProviderScope is required for Riverpod to work
     const ProviderScope(
       child: IsraBookingApp(),
     ),
@@ -42,7 +38,7 @@ class IsraBookingApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light, // Can be driven by a theme provider later
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

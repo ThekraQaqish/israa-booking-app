@@ -1,35 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isra_fields_booking/core/constants/app_constants.dart';
+import 'package:isra_fields_booking/core/theme/app_colors.dart';
+import 'package:isra_fields_booking/core/theme/app_text_styles.dart';
+import 'package:isra_fields_booking/core/widgets/custom_button.dart';
+import 'package:isra_fields_booking/domain/entities/student.dart';
+import 'package:isra_fields_booking/presentation/providers/auth_provider.dart';
+import 'package:isra_fields_booking/presentation/providers/auth_state.dart';
 
-import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/widgets/custom_button.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/auth_state.dart';
-
-/// ---------------------------------------------------------------------------
-/// Home Screen — main dashboard after successful login.
-///
-/// Currently a placeholder showing student info and upcoming feature cards.
-/// Each feature card is a wireframe for a screen you'll build next.
-/// ---------------------------------------------------------------------------
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
-    final student = authState is AuthAuthenticated ? authState.student : null;
+    final student =
+        authState is AuthAuthenticated ? authState.student : null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // ── App Bar ────────────────────────────────────────────────────
-          _buildSliverAppBar(context, ref, student?.name ?? 'Student'),
-
-          // ── Body ───────────────────────────────────────────────────────
+          _buildAppBar(context, ref, student?.name ?? 'Student'),
           SliverPadding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.paddingM,
@@ -37,18 +29,14 @@ class HomeScreen extends ConsumerWidget {
             ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // ── Student Info Card ─────────────────────────────────
                 if (student != null) _StudentInfoCard(student: student),
                 const SizedBox(height: AppConstants.paddingL),
-
-                // ── Quick Actions ─────────────────────────────────────
                 Text('Quick Actions', style: AppTextStyles.headingMedium),
                 const SizedBox(height: AppConstants.paddingM),
                 _buildQuickActions(context),
                 const SizedBox(height: AppConstants.paddingL),
-
-                // ── Upcoming Feature Sections ─────────────────────────
-                Text('Features Coming Soon', style: AppTextStyles.headingMedium),
+                Text('Features Coming Soon',
+                    style: AppTextStyles.headingMedium),
                 const SizedBox(height: AppConstants.paddingM),
                 _buildFeatureGrid(context),
                 const SizedBox(height: AppConstants.paddingXXL),
@@ -60,9 +48,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ── App Bar ─────────────────────────────────────────────────────────────
-
-  Widget _buildSliverAppBar(
+  SliverAppBar _buildAppBar(
       BuildContext context, WidgetRef ref, String studentName) {
     return SliverAppBar(
       expandedHeight: 160,
@@ -73,18 +59,15 @@ class HomeScreen extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {
-            // FUTURE: context.push(RouteConstants.notifications)
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Notifications coming soon!')),
-            );
-          },
+          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notifications coming soon!')),
+          ),
         ),
         IconButton(
           icon: const Icon(Icons.logout_rounded, color: Colors.white),
           onPressed: () => _showLogoutDialog(context, ref),
         ),
-        const SizedBox(width: AppConstants.paddingS),
+        const SizedBox(width: 8),
       ],
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,
@@ -93,7 +76,11 @@ class HomeScreen extends ConsumerWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
+              colors: [
+                AppColors.primaryDark,
+                AppColors.primary,
+                AppColors.primaryLight,
+              ],
             ),
           ),
           child: SafeArea(
@@ -110,16 +97,14 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   Text(
                     _getGreeting(),
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: Colors.white70,
-                    ),
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: Colors.white70),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     studentName,
-                    style: AppTextStyles.headingLarge.copyWith(
-                      color: Colors.white,
-                    ),
+                    style: AppTextStyles.headingLarge
+                        .copyWith(color: Colors.white),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -128,16 +113,11 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ),
-        title: Text(
-          AppConstants.appName,
-          style: AppTextStyles.appBarTitle,
-        ),
+        title: Text(AppConstants.appName, style: AppTextStyles.appBarTitle),
         titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
       ),
     );
   }
-
-  // ── Quick Actions ────────────────────────────────────────────────────────
 
   Widget _buildQuickActions(BuildContext context) {
     return Row(
@@ -146,12 +126,9 @@ class HomeScreen extends ConsumerWidget {
           child: AppButton(
             label: 'Book a Field',
             prefixIcon: Icons.add_circle_outline_rounded,
-            onPressed: () {
-              // FUTURE: context.push(RouteConstants.fieldList)
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Field booking coming soon!')),
-              );
-            },
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Field booking coming soon!')),
+            ),
           ),
         ),
         const SizedBox(width: AppConstants.paddingM),
@@ -160,19 +137,14 @@ class HomeScreen extends ConsumerWidget {
             label: 'My Bookings',
             prefixIcon: Icons.history_rounded,
             isOutlined: true,
-            onPressed: () {
-              // FUTURE: context.push(RouteConstants.reservationHistory)
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Booking history coming soon!')),
-              );
-            },
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Booking history coming soon!')),
+            ),
           ),
         ),
       ],
     );
   }
-
-  // ── Feature Grid ─────────────────────────────────────────────────────────
 
   Widget _buildFeatureGrid(BuildContext context) {
     final features = [
@@ -181,42 +153,36 @@ class HomeScreen extends ConsumerWidget {
         label: 'Field List',
         description: 'Browse all available football fields',
         color: AppColors.primary,
-        route: 'fields', // RouteConstants.fieldList
       ),
       _FeatureItem(
         icon: Icons.schedule_rounded,
         label: 'Time Slots',
         description: 'View and select available time slots',
         color: AppColors.info,
-        route: 'slots',
       ),
       _FeatureItem(
         icon: Icons.pending_actions_rounded,
         label: 'Reservations',
         description: 'Track your booking requests',
         color: AppColors.warning,
-        route: 'reservations',
       ),
       _FeatureItem(
         icon: Icons.admin_panel_settings_rounded,
         label: 'Admin Panel',
         description: 'Approve or reject bookings',
         color: AppColors.secondary,
-        route: 'admin',
       ),
       _FeatureItem(
         icon: Icons.notifications_rounded,
         label: 'Notifications',
         description: 'Real-time booking updates',
         color: AppColors.error,
-        route: 'notifications',
       ),
       _FeatureItem(
         icon: Icons.person_rounded,
         label: 'Profile',
         description: 'Manage your student profile',
         color: AppColors.primaryLight,
-        route: 'profile',
       ),
     ];
 
@@ -230,11 +196,10 @@ class HomeScreen extends ConsumerWidget {
         childAspectRatio: 1.1,
       ),
       itemCount: features.length,
-      itemBuilder: (context, index) => _FeatureCard(item: features[index]),
+      itemBuilder: (context, index) =>
+          _FeatureCard(item: features[index]),
     );
   }
-
-  // ── Dialogs ──────────────────────────────────────────────────────────────
 
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
@@ -245,8 +210,7 @@ class HomeScreen extends ConsumerWidget {
         ),
         title: const Text('Log Out'),
         content: const Text(
-          'Are you sure you want to log out of your account?',
-        ),
+            'Are you sure you want to log out of your account?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -257,17 +221,14 @@ class HomeScreen extends ConsumerWidget {
               Navigator.of(ctx).pop();
               ref.read(authProvider.notifier).logout();
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Log Out'),
           ),
         ],
       ),
     );
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -277,12 +238,10 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// SUB-WIDGETS
-// ════════════════════════════════════════════════════════════════════════════
+// ── Sub-widgets ───────────────────────────────────────────────────────────────
 
 class _StudentInfoCard extends StatelessWidget {
-  final dynamic student; // Student entity
+  final Student student;
 
   const _StudentInfoCard({required this.student});
 
@@ -308,11 +267,11 @@ class _StudentInfoCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Avatar ──────────────────────────────────────────────────────
+          // Avatar circle
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
             ),
@@ -321,15 +280,13 @@ class _StudentInfoCard extends StatelessWidget {
                 student.name.isNotEmpty
                     ? student.name[0].toUpperCase()
                     : '?',
-                style: AppTextStyles.headingLarge.copyWith(
-                  color: Colors.white,
-                ),
+                style: AppTextStyles.headingLarge
+                    .copyWith(color: Colors.white),
               ),
             ),
           ),
           const SizedBox(width: AppConstants.paddingM),
-
-          // ── Info ─────────────────────────────────────────────────────────
+          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,14 +347,12 @@ class _FeatureItem {
   final String label;
   final String description;
   final Color color;
-  final String route;
 
   const _FeatureItem({
     required this.icon,
     required this.label,
     required this.description,
     required this.color,
-    required this.route,
   });
 }
 
@@ -408,16 +363,14 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${item.label} — coming soon!'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      },
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.label} — coming soon!'),
+          duration: const Duration(seconds: 2),
+        ),
+      ),
       child: Container(
-        padding: const EdgeInsets.all(AppConstants.paddingM),
+        padding: EdgeInsets.all(AppConstants.paddingM),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppConstants.radiusL),
@@ -438,7 +391,8 @@ class _FeatureCard extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: item.color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                borderRadius:
+                    BorderRadius.circular(AppConstants.radiusM),
               ),
               child: Icon(item.icon, color: item.color, size: 24),
             ),
