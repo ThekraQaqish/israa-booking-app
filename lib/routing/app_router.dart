@@ -4,9 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:isra_fields_booking/core/constants/route_constants.dart';
 import 'package:isra_fields_booking/presentation/providers/auth_provider.dart';
 import 'package:isra_fields_booking/presentation/providers/auth_state.dart';
+import 'package:isra_fields_booking/presentation/screens/booking/booking_screen.dart';
+import 'package:isra_fields_booking/presentation/screens/booking/booking_success_screen.dart';
 import 'package:isra_fields_booking/presentation/screens/login/login_screen.dart';
-import 'package:isra_fields_booking/presentation/screens/home/home_screen.dart';
+import 'package:isra_fields_booking/presentation/screens/login/register_screen.dart';
+import 'package:isra_fields_booking/presentation/screens/main/main_shell.dart';
 import 'package:isra_fields_booking/presentation/screens/splash/splash_screen.dart';
+import 'package:isra_fields_booking/presentation/screens/sports/sport_detail_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier(ref);
@@ -17,98 +21,75 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: false,
     redirect: (BuildContext context, GoRouterState state) {
       final authState = ref.read(authProvider);
-      final isOnSplash = state.matchedLocation == RouteConstants.splash;
-      final isOnLogin = state.matchedLocation == RouteConstants.login;
+      final loc = state.matchedLocation;
+      final isOnSplash = loc == RouteConstants.splash;
+      final isOnLogin = loc == RouteConstants.login;
+      final isOnRegister = loc == RouteConstants.register;
       final isAuthenticated = authState is AuthAuthenticated;
 
       if (isOnSplash) return null;
-      if (!isAuthenticated && !isOnLogin) return RouteConstants.login;
-      if (isAuthenticated && isOnLogin) return RouteConstants.home;
+      if (!isAuthenticated && !isOnLogin && !isOnRegister) return RouteConstants.login;
+      if (isAuthenticated && (isOnLogin || isOnRegister)) return RouteConstants.home;
       return null;
     },
     routes: [
       GoRoute(
         path: RouteConstants.splash,
-        name: 'splash',
-        pageBuilder: (context, state) => _fadePage(
-          key: state.pageKey,
-          child: const SplashScreen(),
-        ),
+        builder: (_, __) => const SplashScreen(),
       ),
       GoRoute(
         path: RouteConstants.login,
-        name: 'login',
-        pageBuilder: (context, state) => _slidePage(
-          key: state.pageKey,
-          child: const LoginScreen(),
-        ),
+        builder: (_, __) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: RouteConstants.register,
+        builder: (_, __) => const RegisterScreen(),
       ),
       GoRoute(
         path: RouteConstants.home,
-        name: 'home',
-        pageBuilder: (context, state) => _fadePage(
-          key: state.pageKey,
-          child: const HomeScreen(),
-        ),
-        // Add sub-routes here later:
-        // routes: [ GoRoute(path: 'fields', ...) ]
-      ),
-    ],
-    errorPageBuilder: (context, state) => MaterialPage(
-      child: Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'Page not found',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => context.go(RouteConstants.home),
-                child: const Text('Go Home'),
+        builder: (_, __) => const MainShell(),
+        routes: [
+          GoRoute(
+            path: 'sport/:sportId',
+            builder: (_, state) => SportDetailScreen(
+              sportId: state.pathParameters['sportId']!,
+            ),
+            routes: [
+              GoRoute(
+                path: 'court/:courtId/book',
+                builder: (_, state) => BookingScreen(
+                  sportId: state.pathParameters['sportId']!,
+                  courtId: state.pathParameters['courtId']!,
+                ),
               ),
             ],
           ),
+        ],
+      ),
+      GoRoute(
+        path: RouteConstants.bookingSuccess,
+        builder: (_, __) => const BookingSuccessScreen(),
+      ),
+    ],
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text('الصفحة غير موجودة'),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go(RouteConstants.home),
+              child: const Text('الرئيسية'),
+            ),
+          ],
         ),
       ),
     ),
   );
 });
-
-CustomTransitionPage<void> _fadePage({
-  required LocalKey key,
-  required Widget child,
-}) {
-  return CustomTransitionPage<void>(
-    key: key,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 300),
-    transitionsBuilder: (context, animation, _, child) =>
-        FadeTransition(opacity: animation, child: child),
-  );
-}
-
-CustomTransitionPage<void> _slidePage({
-  required LocalKey key,
-  required Widget child,
-}) {
-  return CustomTransitionPage<void>(
-    key: key,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 350),
-    transitionsBuilder: (context, animation, _, child) => SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.05),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-      child: FadeTransition(opacity: animation, child: child),
-    ),
-  );
-}
 
 class _RouterNotifier extends ChangeNotifier {
   _RouterNotifier(Ref ref) {

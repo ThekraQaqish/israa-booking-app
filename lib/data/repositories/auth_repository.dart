@@ -3,9 +3,7 @@ import 'package:isra_fields_booking/domain/entities/student.dart';
 
 abstract class AuthRepository {
   Future<Result<Student>> loginWithStudentId(String studentId);
-  Future<Result<void>> logout();
-  Future<Result<Student?>> getCurrentStudent();
-  Future<bool> isAuthenticated();
+
   Future<Result<Student>> register({
     required String studentId,
     required String name,
@@ -14,4 +12,8 @@ abstract class AuthRepository {
     required String year,
     required String password,
   });
+
+  Future<Result<void>> logout();
+  Future<Result<Student?>> getCurrentStudent();
+  Future<bool> isAuthenticated();
 }

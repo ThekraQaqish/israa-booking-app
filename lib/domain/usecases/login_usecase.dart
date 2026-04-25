@@ -6,14 +6,11 @@ import 'package:isra_fields_booking/domain/repositories/auth_repository.dart';
 
 class LoginUseCase {
   final AuthRepository _authRepository;
-
   const LoginUseCase(this._authRepository);
 
   Future<Result<Student>> call(String studentId) async {
-    final validationError = AppValidators.validateStudentId(studentId);
-    if (validationError != null) {
-      return FailureResult(ValidationFailure(validationError));
-    }
+    final error = AppValidators.validateStudentId(studentId);
+    if (error != null) return FailureResult(ValidationFailure(error));
     return _authRepository.loginWithStudentId(studentId.trim());
   }
 }

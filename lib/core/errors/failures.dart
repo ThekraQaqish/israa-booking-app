@@ -12,41 +12,37 @@ abstract class Failure extends Equatable {
 }
 
 class AuthFailure extends Failure {
-  const AuthFailure([super.message = 'Authentication failed. Please check your Student ID.']);
-}
-
-class SessionExpiredFailure extends Failure {
-  const SessionExpiredFailure([super.message = 'Your session has expired. Please log in again.']);
-}
-
-class UnauthorizedFailure extends Failure {
-  const UnauthorizedFailure([super.message = 'You are not authorized to access this resource.']);
+  const AuthFailure([super.message = 'فشل تسجيل الدخول. تحقق من رقم الطالب.']);
 }
 
 class NetworkFailure extends Failure {
-  const NetworkFailure([super.message = 'No internet connection. Please check your network.']);
+  const NetworkFailure([super.message = 'لا يوجد اتصال بالإنترنت.']);
 }
 
 class ServerFailure extends Failure {
-  const ServerFailure([super.message = 'Server error. Please try again later.']);
-}
-
-class TimeoutFailure extends Failure {
-  const TimeoutFailure([super.message = 'Request timed out. Please try again.']);
+  const ServerFailure([super.message = 'خطأ في الخادم. حاول مرة أخرى.']);
 }
 
 class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
 
+class NotFoundFailure extends Failure {
+  const NotFoundFailure([super.message = 'العنصر المطلوب غير موجود.']);
+}
+
+class ReservationFailure extends Failure {
+  const ReservationFailure([super.message = 'فشل إتمام الحجز. حاول مرة أخرى.']);
+}
+
 class SlotUnavailableFailure extends Failure {
-  const SlotUnavailableFailure([super.message = 'This time slot is no longer available.']);
+  const SlotUnavailableFailure([super.message = 'هذا الوقت محجوز بالفعل.']);
 }
 
 class DuplicateReservationFailure extends Failure {
-  const DuplicateReservationFailure([super.message = 'You already have an active reservation.']);
+  const DuplicateReservationFailure([super.message = 'لديك حجز نشط بالفعل.']);
 }
 
 class UnknownFailure extends Failure {
-  const UnknownFailure([super.message = 'An unexpected error occurred. Please try again.']);
+  const UnknownFailure([super.message = 'حدث خطأ غير متوقع.']);
 }

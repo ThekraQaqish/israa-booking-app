@@ -1,414 +1,424 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:isra_fields_booking/core/constants/app_constants.dart';
+import 'package:isra_fields_booking/core/constants/route_constants.dart';
 import 'package:isra_fields_booking/core/theme/app_colors.dart';
-import 'package:isra_fields_booking/core/theme/app_text_styles.dart';
-import 'package:isra_fields_booking/core/widgets/custom_button.dart';
-import 'package:isra_fields_booking/domain/entities/student.dart';
+import 'package:isra_fields_booking/domain/entities/sport.dart';
 import 'package:isra_fields_booking/presentation/providers/auth_provider.dart';
 import 'package:isra_fields_booking/presentation/providers/auth_state.dart';
+import 'package:isra_fields_booking/presentation/providers/reservation_provider.dart';
+import 'package:isra_fields_booking/presentation/providers/sport_provider.dart';
+import 'package:isra_fields_booking/presentation/widgets/reservation_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  Color _hexToColor(String hex) {
+    final c = hex.replaceAll('#', '');
+    return Color(int.parse('FF$c', radix: 16));
+  }
+
+  String _getGreeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'صباح الخير 👋';
+    if (h < 17) return 'مساء الخير 👋';
+    return 'مساء النور 👋';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final student =
-        authState is AuthAuthenticated ? authState.student : null;
+    final auth = ref.watch(authProvider);
+    final student = auth is AuthAuthenticated ? auth.student : null;
+    final sportsAsync = ref.watch(allSportsProvider);
+    final reservationsAsync = ref.watch(myReservationsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context, ref, student?.name ?? 'Student'),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.paddingM,
-              vertical: AppConstants.paddingM,
-            ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (student != null) _StudentInfoCard(student: student),
-                const SizedBox(height: AppConstants.paddingL),
-                Text('Quick Actions', style: AppTextStyles.headingMedium),
-                const SizedBox(height: AppConstants.paddingM),
-                _buildQuickActions(context),
-                const SizedBox(height: AppConstants.paddingL),
-                Text('Features Coming Soon',
-                    style: AppTextStyles.headingMedium),
-                const SizedBox(height: AppConstants.paddingM),
-                _buildFeatureGrid(context),
-                const SizedBox(height: AppConstants.paddingXXL),
-              ]),
-            ),
+          SliverToBoxAdapter(
+            child: _buildHeader(context, student?.name ?? 'طالب'),
           ),
-        ],
-      ),
-    );
-  }
-
-  SliverAppBar _buildAppBar(
-      BuildContext context, WidgetRef ref, String studentName) {
-    return SliverAppBar(
-      expandedHeight: 160,
-      floating: false,
-      pinned: true,
-      backgroundColor: AppColors.primary,
-      automaticallyImplyLeading: false,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Notifications coming soon!')),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.logout_rounded, color: Colors.white),
-          onPressed: () => _showLogoutDialog(context, ref),
-        ),
-        const SizedBox(width: 8),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        collapseMode: CollapseMode.parallax,
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primaryDark,
-                AppColors.primary,
-                AppColors.primaryLight,
-              ],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppConstants.paddingL,
-                AppConstants.paddingL,
-                AppConstants.paddingL,
-                AppConstants.paddingXL,
+          SliverToBoxAdapter(
+            child: sportsAsync.when(
+              data: (sports) => _buildSportsSection(context, sports),
+              loading: () => const SizedBox(
+                height: 110,
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ),
+          // Quick Actions
+          SliverToBoxAdapter(child: _buildQuickActions(context)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _getGreeting(),
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: Colors.white70),
+                  const Text(
+                    'الحجوزات القادمة',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    studentName,
-                    style: AppTextStyles.headingLarge
-                        .copyWith(color: Colors.white),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      'عرض الكل',
+                      style: TextStyle(color: AppColors.primary, fontSize: 13),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: reservationsAsync.when(
+              data: (list) {
+                final upcoming =
+                    list.where((r) => r.isUpcoming).take(3).toList();
+                if (upcoming.isEmpty) return _buildEmptyBookings(context);
+                return Column(
+                  children: upcoming
+                      .map((r) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 6),
+                            child: ReservationCard(reservation: r),
+                          ))
+                      .toList(),
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child:
+                      CircularProgressIndicator(color: AppColors.primary),
+                ),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, String name) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // لوغو الجامعة — المسار الصحيح
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.all(5),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            'assets/images/IsraaLogo.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                'IU',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.circle,
+                                color: Color(0xFF4CAF50), size: 8),
+                            SizedBox(width: 6),
+                            Text(
+                              'الملاعب متاحة',
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _getGreeting(),
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            // Arc فاصل أبيض بأسفل الهيدر
+            Container(
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28)),
+              ),
+            ),
+          ],
         ),
-        title: Text(AppConstants.appName, style: AppTextStyles.appBarTitle),
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+      ),
+    );
+  }
+
+  Widget _buildSportsSection(BuildContext context, List<Sport> sports) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 4, 20, 14),
+            child: Text(
+              'الرياضات المتاحة',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: sports.length,
+              itemBuilder: (context, i) {
+                final sport = sports[i];
+                final color = _hexToColor(sport.colorHex);
+                return GestureDetector(
+                  onTap: () => context
+                      .push(RouteConstants.sportDetailPath(sport.id)),
+                  child: Container(
+                    width: 76,
+                    margin: const EdgeInsets.symmetric(horizontal: 5),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: color.withOpacity(0.2), width: 1),
+                          ),
+                          child: Icon(
+                            IconData(sport.iconCodePoint,
+                                fontFamily: 'MaterialIcons'),
+                            color: color,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          sport.nameAr,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: AppButton(
-            label: 'Book a Field',
-            prefixIcon: Icons.add_circle_outline_rounded,
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Field booking coming soon!')),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppConstants.paddingM),
-        Expanded(
-          child: AppButton(
-            label: 'My Bookings',
-            prefixIcon: Icons.history_rounded,
-            isOutlined: true,
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Booking history coming soon!')),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeatureGrid(BuildContext context) {
-    final features = [
-      _FeatureItem(
-        icon: Icons.sports_soccer_rounded,
-        label: 'Field List',
-        description: 'Browse all available football fields',
-        color: AppColors.primary,
-      ),
-      _FeatureItem(
-        icon: Icons.schedule_rounded,
-        label: 'Time Slots',
-        description: 'View and select available time slots',
-        color: AppColors.info,
-      ),
-      _FeatureItem(
-        icon: Icons.pending_actions_rounded,
-        label: 'Reservations',
-        description: 'Track your booking requests',
-        color: AppColors.warning,
-      ),
-      _FeatureItem(
-        icon: Icons.admin_panel_settings_rounded,
-        label: 'Admin Panel',
-        description: 'Approve or reject bookings',
-        color: AppColors.secondary,
-      ),
-      _FeatureItem(
-        icon: Icons.notifications_rounded,
-        label: 'Notifications',
-        description: 'Real-time booking updates',
-        color: AppColors.error,
-      ),
-      _FeatureItem(
-        icon: Icons.person_rounded,
-        label: 'Profile',
-        description: 'Manage your student profile',
-        color: AppColors.primaryLight,
-      ),
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: AppConstants.paddingM,
-        mainAxisSpacing: AppConstants.paddingM,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: features.length,
-      itemBuilder: (context, index) =>
-          _FeatureCard(item: features[index]),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        ),
-        title: const Text('Log Out'),
-        content: const Text(
-            'Are you sure you want to log out of your account?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ref.read(authProvider.notifier).logout();
-            },
-            style:
-                ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Log Out'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning 👋';
-    if (hour < 17) return 'Good Afternoon 👋';
-    return 'Good Evening 👋';
-  }
-}
-
-// ── Sub-widgets ───────────────────────────────────────────────────────────────
-
-class _StudentInfoCard extends StatelessWidget {
-  final Student student;
-
-  const _StudentInfoCard({required this.student});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingL),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primaryContainer, Colors.white],
-        ),
-        borderRadius: BorderRadius.circular(AppConstants.radiusXL),
-        border: Border.all(color: AppColors.primary.withOpacity(0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
       child: Row(
         children: [
-          // Avatar circle
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
+          Expanded(
+            child: _QuickCard(
+              icon: Icons.sports_soccer_outlined,
+              title: 'احجز ملعب',
+              subtitle: 'تصفح الملاعب المتاحة',
               color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                student.name.isNotEmpty
-                    ? student.name[0].toUpperCase()
-                    : '?',
-                style: AppTextStyles.headingLarge
-                    .copyWith(color: Colors.white),
-              ),
+              onTap: () {},
             ),
           ),
-          const SizedBox(width: AppConstants.paddingM),
-          // Info
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(student.name, style: AppTextStyles.headingSmall),
-                const SizedBox(height: 2),
-                Text(
-                  'ID: ${student.studentId}',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    fontFamily: 'monospace',
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    _InfoChip(student.department),
-                    const SizedBox(width: AppConstants.paddingXS),
-                    _InfoChip(student.year),
-                  ],
-                ),
-              ],
+            child: _QuickCard(
+              icon: Icons.calendar_month_outlined,
+              title: 'حجوزاتي',
+              subtitle: 'عرض كل حجوزاتك',
+              color: const Color(0xFF1565C0),
+              onTap: () {},
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _InfoChip extends StatelessWidget {
-  final String label;
-  const _InfoChip(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppConstants.radiusCircular),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.labelSmall.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w600,
+  Widget _buildEmptyBookings(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.calendar_month_outlined,
+                  color: AppColors.primary, size: 36),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'لا توجد حجوزات قادمة',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'احجز ملعبك المفضل الآن',
+              style:
+                  TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _FeatureItem {
+class _QuickCard extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String description;
+  final String title;
+  final String subtitle;
   final Color color;
+  final VoidCallback onTap;
 
-  const _FeatureItem({
+  const _QuickCard({
     required this.icon,
-    required this.label,
-    required this.description,
+    required this.title,
+    required this.subtitle,
     required this.color,
+    required this.onTap,
   });
-}
-
-class _FeatureCard extends StatelessWidget {
-  final _FeatureItem item;
-  const _FeatureCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${item.label} — coming soon!'),
-          duration: const Duration(seconds: 2),
-        ),
-      ),
+      onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(AppConstants.paddingM),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppConstants.radiusL),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 8,
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: item.color.withOpacity(0.12),
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radiusM),
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(item.icon, color: item.color, size: 24),
+              child: Icon(icon, color: color, size: 22),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.label, style: AppTextStyles.headingSmall),
-                const SizedBox(height: 2),
-                Text(
-                  item.description,
-                  style: AppTextStyles.bodySmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+            const SizedBox(height: 10),
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 3),
+            Text(subtitle,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
       ),

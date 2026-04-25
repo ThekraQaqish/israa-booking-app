@@ -5,10 +5,7 @@ import 'package:isra_fields_booking/domain/entities/student.dart';
 import 'package:isra_fields_booking/domain/repositories/auth_repository.dart';
 import 'package:isra_fields_booking/domain/usecases/login_usecase.dart';
 import 'package:isra_fields_booking/domain/usecases/logout_usecase.dart';
-import 'package:isra_fields_booking/core/utils/result.dart';
 import 'package:isra_fields_booking/presentation/providers/auth_state.dart';
-
-// ── Dependency Providers ──────────────────────────────────────────────────────
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return MockAuthRemoteDataSource();
@@ -26,17 +23,13 @@ final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(authRepositoryProvider));
 });
 
-// ── Main Auth Provider ────────────────────────────────────────────────────────
-
-final authProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
+    repository: ref.watch(authRepositoryProvider),
     loginUseCase: ref.watch(loginUseCaseProvider),
     logoutUseCase: ref.watch(logoutUseCaseProvider),
   );
 });
-
-// ── Convenience Providers ─────────────────────────────────────────────────────
 
 final currentStudentProvider = Provider<Student?>((ref) {
   final state = ref.watch(authProvider);
@@ -48,26 +41,48 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
   return ref.watch(authProvider) is AuthAuthenticated;
 });
 
-// ── Auth Notifier ─────────────────────────────────────────────────────────────
-
 class AuthNotifier extends StateNotifier<AuthState> {
+  final AuthRepository _repository;
   final LoginUseCase _loginUseCase;
   final LogoutUseCase _logoutUseCase;
 
   AuthNotifier({
+    required AuthRepository repository,
     required LoginUseCase loginUseCase,
     required LogoutUseCase logoutUseCase,
-  })  : _loginUseCase = loginUseCase,
+  })  : _repository = repository,
+        _loginUseCase = loginUseCase,
         _logoutUseCase = logoutUseCase,
         super(const AuthInitial());
 
   Future<void> login(String studentId) async {
     if (state is AuthLoading) return;
-
     state = const AuthLoading();
-
     final result = await _loginUseCase(studentId);
+    result.when(
+      onSuccess: (student) => state = AuthAuthenticated(student),
+      onFailure: (failure) => state = AuthError(failure.message),
+    );
+  }
 
+  Future<void> register({
+    required String studentId,
+    required String name,
+    required String email,
+    required String department,
+    required String year,
+    required String password,
+  }) async {
+    if (state is AuthLoading) return;
+    state = const AuthLoading();
+    final result = await _repository.register(
+      studentId: studentId,
+      name: name,
+      email: email,
+      department: department,
+      year: year,
+      password: password,
+    );
     result.when(
       onSuccess: (student) => state = AuthAuthenticated(student),
       onFailure: (failure) => state = AuthError(failure.message),
@@ -81,8 +96,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void clearError() {
-    if (state is AuthError) {
-      state = const AuthInitial();
-    }
+    if (state is AuthError) state = const AuthInitial();
   }
 }

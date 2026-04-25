@@ -3,7 +3,6 @@ import 'package:isra_fields_booking/domain/entities/student.dart';
 
 sealed class AuthState extends Equatable {
   const AuthState();
-
   @override
   List<Object?> get props => [];
 }
@@ -19,7 +18,6 @@ final class AuthLoading extends AuthState {
 final class AuthAuthenticated extends AuthState {
   final Student student;
   const AuthAuthenticated(this.student);
-
   @override
   List<Object?> get props => [student];
 }
@@ -27,7 +25,6 @@ final class AuthAuthenticated extends AuthState {
 final class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);
-
   @override
   List<Object?> get props => [message];
 }

@@ -29,13 +29,4 @@ class StudentModel extends Student {
         'year': year,
         'is_active': isActive,
       };
-
-  factory StudentModel.fromEntity(Student student) => StudentModel(
-        studentId: student.studentId,
-        name: student.name,
-        email: student.email,
-        department: student.department,
-        year: student.year,
-        isActive: student.isActive,
-      );
 }

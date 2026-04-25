@@ -21,12 +21,8 @@ class Student extends Equatable {
   List<Object?> get props => [studentId, name, email, department, year, isActive];
 
   Student copyWith({
-    String? studentId,
-    String? name,
-    String? email,
-    String? department,
-    String? year,
-    bool? isActive,
+    String? studentId, String? name, String? email,
+    String? department, String? year, bool? isActive,
   }) {
     return Student(
       studentId: studentId ?? this.studentId,
